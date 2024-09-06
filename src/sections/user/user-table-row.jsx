@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
+import Button from '@mui/material/Button';
 import Popover from '@mui/material/Popover';
 import TableRow from '@mui/material/TableRow';
 import Checkbox from '@mui/material/Checkbox';
@@ -11,6 +12,8 @@ import TableCell from '@mui/material/TableCell';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 
+import { supabase } from 'src/lib/supabase.ts';
+
 import Label from 'src/components/label';
 import Iconify from 'src/components/iconify';
 
@@ -18,15 +21,20 @@ import Iconify from 'src/components/iconify';
 
 export default function UserTableRow({
   selected,
+  userId,
   name,
   avatarUrl,
-  company,
+  location,
   role,
-  isVerified,
+  upToDatePay,
   status,
   handleClick,
+  phoneNumber, // Nuevo prop para el número de teléfono
+  refreshClients,
 }) {
   const [open, setOpen] = useState(null);
+  const [paymentPopoverOpen, setPaymentPopoverOpen] = useState(null);
+  const [dueMonths, setDueMonths] = useState([]);
 
   const handleOpenMenu = (event) => {
     setOpen(event.currentTarget);
@@ -34,6 +42,96 @@ export default function UserTableRow({
 
   const handleCloseMenu = () => {
     setOpen(null);
+  };
+
+  const handleOpenPaymentPopover = async (event) => {
+    setPaymentPopoverOpen(event.currentTarget);
+    const { data, error } = await supabase
+      .from('clients')
+      .select('last_payment, pay_day')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user payment data:', error);
+      return;
+    }
+
+    const lastPaymentDate = new Date(data.last_payment);
+    const currentDate = new Date();
+    const monthsDue = [];
+
+    while (lastPaymentDate < currentDate) {
+      lastPaymentDate.setMonth(lastPaymentDate.getMonth() + 1);
+      if (lastPaymentDate < currentDate) {
+        monthsDue.push({
+          monthName: lastPaymentDate.toLocaleString('default', { month: 'long' }),
+          monthIndex: lastPaymentDate.getMonth(),
+        });
+      }
+    }
+
+    setDueMonths(monthsDue);
+  };
+
+  const handleClosePaymentPopover = () => {
+    setPaymentPopoverOpen(null);
+  };
+
+  const handlePayMonth = async (monthIndex) => {
+    if (monthIndex !== dueMonths[0].monthIndex) {
+      console.error('Debes pagar los meses pendientes en orden.');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('clients')
+      .select('pay_day')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user pay_day:', error);
+      return;
+    }
+
+    const newPaymentDate = new Date();
+    newPaymentDate.setMonth(monthIndex);
+    newPaymentDate.setFullYear(new Date().getFullYear());
+    newPaymentDate.setDate(data.pay_day);
+
+    const { error: updateError } = await supabase
+      .from('clients')
+      .update({ last_payment: newPaymentDate })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('Error updating payment date:', updateError);
+    } else {
+      console.log('Payment date updated successfully');
+      refreshClients();
+      handleClosePaymentPopover();
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    const { error } = await supabase.from('clients').delete().eq('id', userId);
+
+    if (error) {
+      console.error('Error deleting user:', error);
+    } else {
+      console.log('User deleted successfully');
+      refreshClients();
+      handleCloseMenu();
+    }
+  };
+
+  // Formatear el número de teléfono para la URL de WhatsApp
+  const handleContactWhatsApp = () => {
+    const formattedPhoneNumber = phoneNumber.replace(/\D/g, ''); // Elimina caracteres no numéricos
+    alert(phoneNumber);
+    const whatsappUrl = `https://wa.me/${formattedPhoneNumber}`;
+    window.open(whatsappUrl, '_blank'); // Abre WhatsApp en una nueva pestaña
   };
 
   return (
@@ -52,14 +150,12 @@ export default function UserTableRow({
           </Stack>
         </TableCell>
 
-        <TableCell>{company}</TableCell>
+        <TableCell>{location}</TableCell>
 
-        <TableCell>{role}</TableCell>
-
-        <TableCell align="center">{isVerified ? 'Yes' : 'No'}</TableCell>
-
-        <TableCell>
-          <Label color={(status === 'banned' && 'error') || 'success'}>{status}</Label>
+        <TableCell align="center">
+          <Label color={upToDatePay === false ? 'error' : 'success'}>
+            {upToDatePay ? 'Sí' : 'No'}
+          </Label>
         </TableCell>
 
         <TableCell align="right">
@@ -79,15 +175,45 @@ export default function UserTableRow({
           sx: { width: 140 },
         }}
       >
-        <MenuItem onClick={handleCloseMenu}>
-          <Iconify icon="eva:edit-fill" sx={{ mr: 2 }} />
-          Edit
-        </MenuItem>
-
-        <MenuItem onClick={handleCloseMenu} sx={{ color: 'error.main' }}>
+        <MenuItem onClick={handleDeleteUser} sx={{ color: 'error.main' }}>
           <Iconify icon="eva:trash-2-outline" sx={{ mr: 2 }} />
           Delete
         </MenuItem>
+        <MenuItem onClick={handleOpenPaymentPopover}>
+          <Iconify icon="eva:checkmark-circle-2-outline" sx={{ mr: 2 }} />
+          Pagar
+        </MenuItem>
+        {/* Nuevo MenuItem para contactar por WhatsApp */}
+        <MenuItem onClick={handleContactWhatsApp}>
+          <Iconify icon="eva:message-circle-outline" sx={{ mr: 2 }} />
+            WhatsApp
+        </MenuItem>
+      </Popover>
+
+      <Popover
+        open={!!paymentPopoverOpen}
+        anchorEl={paymentPopoverOpen}
+        onClose={handleClosePaymentPopover}
+        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{
+          sx: { padding: 2 },
+        }}
+      >
+        {dueMonths.length > 0 ? (
+          dueMonths.map((month, index) => (
+            <Button
+              key={index}
+              fullWidth
+              onClick={() => handlePayMonth(month.monthIndex)}
+              disabled={index > 0} // Deshabilita los meses que no son el primero pendiente
+            >
+              {month.monthName}
+            </Button>
+          ))
+        ) : (
+          <Typography>No hay pagos pendientes.</Typography>
+        )}
       </Popover>
     </>
   );
@@ -95,11 +221,14 @@ export default function UserTableRow({
 
 UserTableRow.propTypes = {
   avatarUrl: PropTypes.any,
-  company: PropTypes.any,
+  location: PropTypes.any,
   handleClick: PropTypes.func,
-  isVerified: PropTypes.any,
+  upToDatePay: PropTypes.bool,
   name: PropTypes.any,
   role: PropTypes.any,
+  userId: PropTypes.number,
+  phoneNumber: PropTypes.string, // Añadir phoneNumber como prop
   selected: PropTypes.any,
   status: PropTypes.string,
+  refreshClients: PropTypes.func,
 };
