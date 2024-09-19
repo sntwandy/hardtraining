@@ -1,7 +1,7 @@
 // ----------------------------------------------------------------------
 
 export const account = {
-  displayName: 'Angelo Germán',
+  displayName: 'Hard Training',
   email: 'angelogerman@hardtraining.com',
-  photoURL: '/assets/images/avatars/avatar_25.jpg',
+  photoURL: '/assets/images/avatars/README.jpg',
 };

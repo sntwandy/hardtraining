@@ -13,8 +13,23 @@ const navConfig = [
     icon: icon('ic_analytics'),
   },
   {
-    title: 'clientes',
-    path: '/user',
+    title: 'club amigos leales',
+    path: '/club-amigos-leales',
+    icon: icon('ic_user'),
+  },
+  {
+    title: 'estadio olimpico',
+    path: '/estadio-olimpico',
+    icon: icon('ic_user'),
+  },
+  {
+    title: 'la loteria',
+    path: '/la-loteria',
+    icon: icon('ic_user'),
+  },
+  {
+    title: 'arenoso',
+    path: '/arenoso',
     icon: icon('ic_user'),
   },
 ];

@@ -9,6 +9,10 @@ export const UserPage = lazy(() => import('src/pages/user'));
 export const LoginPage = lazy(() => import('src/pages/login'));
 export const ProductsPage = lazy(() => import('src/pages/products'));
 export const Page404 = lazy(() => import('src/pages/page-not-found'));
+export const ClubAmigosLeales = lazy(() => import('src/pages/club-amigos-leales'));
+export const EstadioOlimpico = lazy(() => import('src/pages/estadio-olimpico'));
+export const LaLoteria = lazy(() => import('src/pages/la-loteria'));
+export const Arenoso = lazy(() => import('src/pages/arenoso'));
 
 // ----------------------------------------------------------------------
 
@@ -25,6 +29,10 @@ export default function Router() {
       children: [
         { element: <IndexPage />, index: true },
         { path: 'user', element: <UserPage /> },
+        { path: 'club-amigos-leales', element: <ClubAmigosLeales /> },
+        { path: 'estadio-olimpico', element: <EstadioOlimpico /> },
+        { path: 'la-loteria', element: <LaLoteria /> },
+        { path: 'arenoso', element: <Arenoso /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
       ],
